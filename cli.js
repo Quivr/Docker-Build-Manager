@@ -12,8 +12,16 @@ var getObject = function(path, cb){
     cb();
 }
 
+var getImagePath = function(mapName){
+    return `${mapName}/dbm.json`;
+}
+
 var getImageConfig = function(mapName, cb){
-    return getObject(`${mapName}/dbm.json`, cb);;
+    return getObject(getImagePath(mapName), cb);;
+}
+
+var setImageConfig = function(mapName, config){
+    fs.writeFileSync(getImagePath(mapName), JSON.stringify(config, null, 4));
 }
 
 var config = getObject('./dbm-global.json', () => {
@@ -34,10 +42,13 @@ var dbmCommandInfo = {
     }
 }
 
-var spawnCommand = function(program, attrs){
+var spawnCommand = function(program, attrs, exitCb){
     spawn(program, attrs, {stdio: 'inherit'})
     .on('exit', function (exitCode) {
-        process.exit(exitCode)
+        if(!exitCb)
+            process.exit(exitCode)
+        else
+            exitCb();
     })
 }
 
@@ -55,16 +66,45 @@ var invalidDirectory = (directory) => {
 }
 var quit = (code) => { process.exit(code); }
 
+var getIncreasedVersion = function(version){
+    // TODO also work for other versionformats
+    var splitted = version.split('.');
+    var last = parseInt(splitted[splitted.length - 1]) + 1;
+    var newVersion = "";
+    for(var i = 0; i < splitted.length - 1; i++){
+        newVersion += `${splitted[i]}.`;
+    }
+    newVersion += last;
+    return newVersion;
+}
+
 var dbmCommands = {
-    "build": () => {
+    "build": (exitCb) => {
         var info = dbmCommandInfo.cmdImage();
         var attrs = ['build', info.mapName, `-t`, `${config.registry_name}/${info.imageName}:${info.imageConfig.version}`];
-        spawnCommand('docker', attrs);
+        spawnCommand('docker', attrs, exitCb);
     },
-    "push": () => {
+    "push": (exitCb) => {
         var info = dbmCommandInfo.cmdImage();
         var attrs = ['push', `${config.registry_name}/${info.imageName}:${info.imageConfig.version}`];
-        spawnCommand('docker', attrs);
+        spawnCommand('docker', attrs, exitCb);
+    },
+    "update": () => {
+        var info = dbmCommandInfo.cmdImage();        
+        info.imageConfig.version = getIncreasedVersion(info.imageConfig.version);
+        setImageConfig(info.mapName, info.imageConfig);
+        console.log('Updated version in config');
+    },
+    "ub": () => {
+        dbmCommands.update();
+        dbmCommands.build();
+    },
+    "ubp": () => {
+        dbmCommands.update();
+        dbmCommands.bp();
+    },
+    "bp": () => {
+        dbmCommands.build(() => dbmCommands.push());
     }
 }
 
