@@ -1,0 +1,11 @@
+{
+    "images": {
+        "example": {
+            "dir": "example-folder"
+        },
+        "invalid": {
+            "dir": "not-existing"
+        }
+    },
+    "registry_name": "url"
+}
