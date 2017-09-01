@@ -1,5 +1,5 @@
 {
-  "name": "docker-build-manager",
+  "name": "@quivr/docker-build-manager",
   "description": "A global executable to easily manage docker build versions",
   "version": "1.0.0",
   "author": "jhoobergs",
